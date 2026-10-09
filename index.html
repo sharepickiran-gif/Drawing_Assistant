@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -8,70 +7,112 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-'''
-<header class="app-header">
-    <div>
-        <h1>Loomis Drawing Assistant</h1>
-        <p>A smarter way to construct portraits</p>
-    </div>
-</header>
-
-<main class="app-container">
-
-    <section class="upload-section">
-        <h2>01 — Upload your reference</h2>
-        <p>Select a portrait photograph to begin.</p>
-
-        <label for="imageUpload" class="upload-button">
-            Choose Photograph
-        </label>
-
-        <input
-            type="file"
-            id="imageUpload"
-            accept="image/*"
-            hidden
-        >
-    </section>
-
-    <section class="workspace">
-        <div class="workspace-header">
-            <h2>Reference Workspace</h2>
-            <span id="imageStatus">No image loaded</span>
+    <header class="app-header">
+        <div>
+            <h1>Loomis Drawing Assistant</h1>
+            <p>A smarter way to construct portraits</p>
         </div>
+    </header>
 
-        <div id="imageContainer" class="image-container">
+    <main class="app-container">
+        <section class="upload-section">
+            <h2>01 — Upload your reference</h2>
+            <p>Select a portrait photograph to begin.</p>
+
+            <label for="imageUpload" class="upload-button">
+                Choose Photograph
+            </label>
+
+            <input
+                type="file"
+                id="imageUpload"
+                accept="image/*"
+                hidden
+            >
+        </section>
+
+        <section class="workspace">
+            <div class="workspace-header">
+                <h2>Reference Workspace</h2>
+                <span id="imageStatus">No image loaded</span>
+            </div>
+
+            <div class="paper-settings">
+    <label for="paperSize">Paper size</label>
+    <select id="paperSize">
+        <option value="A5">A5</option>
+        <option value="A4" selected>A4</option>
+        <option value="A3">A3</option>
+    </select>
+
+    <label for="paperOrientation">Orientation</label>
+    <select id="paperOrientation">
+        <option value="portrait" selected>Portrait</option>
+        <option value="landscape">Landscape</option>
+    </select>
+</div>
+
+<div id="imageContainer" class="image-container">
     <div id="placeholder" class="placeholder">
         <span class="placeholder-icon">＋</span>
         <p>Your portrait will appear here</p>
         <small>Upload an image to get started</small>
     </div>
 
-    <div id="drawingArea" class="drawing-area" hidden>
-        <img
-            id="referenceImage"
-            alt="Uploaded portrait reference"
-        >
-        <canvas id="drawingCanvas"></canvas>
+    <div id="paperWorkspace" class="paper-workspace" hidden>
+        <div id="topRuler" class="ruler ruler-horizontal"></div>
+
+        <div class="paper-middle">
+            <div id="leftRuler" class="ruler ruler-vertical"></div>
+
+            <div id="paperStage" class="paper-stage">
+                <img id="referenceImage" alt="Uploaded portrait reference">
+                <canvas id="drawingCanvas"></canvas>
+            </div>
+
+            <div id="rightRuler" class="ruler ruler-vertical"></div>
+        </div>
+
+        <div id="bottomRuler" class="ruler ruler-horizontal"></div>
     </div>
 </div>
 
 <div id="drawingInstructions" class="drawing-instructions" hidden>
-    Upload a portrait, then click the centre of each eye.
+    Upload a portrait to begin.
 </div>
 
 <div class="drawing-controls">
-    <button id="resetLine" type="button" disabled>
-        Reset eye line
-    </button>
+    <button id="undoAction" type="button" disabled>Undo</button>
+    <button id="addHorizontalLine" type="button" disabled>Red line</button>
+    <button id="addVerticalLine" type="button" disabled>Blue line</button>
+    <button id="resetLine" type="button" disabled>Reset guides</button>
 </div>
-    </section>
 
-</main>
+            <div id="drawingInstructions" class="drawing-instructions" hidden>
+                Upload a portrait, then click the centre of each eye.
+            </div>
 
-<script src="script.js"></script>
-```
+            <div class="drawing-controls">
+                <button id="undoAction" type="button" disabled>
+                    Undo
+                </button>
 
+                <button id="addHorizontalLine" type="button" disabled>
+                    Red line
+                </button>
+
+                <button id="addVerticalLine" type="button" disabled>
+                    Blue line
+                </button>
+
+                <button id="resetLine" type="button" disabled>
+                    Reset guides
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <script src="script.js"></script>
 </body>
 </html>
+

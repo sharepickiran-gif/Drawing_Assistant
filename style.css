@@ -1,156 +1,153 @@
 * {
-  box-sizing: border-box;
-  }
+    box-sizing: border-box;
+}
 
 body {
-margin: 0;
-font-family: Arial, sans-serif;
-background: #f5f5f2;
-color: #252525;
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f5f5f2;
+    color: #252525;
 }
 
 .app-header {
-padding: 24px 6%;
-background: #252525;
-color: white;
+    padding: 24px 6%;
+    background: #252525;
+    color: white;
 }
 
 .app-header h1 {
-margin: 0 0 8px;
-font-size: 26px;
+    margin: 0 0 8px;
+    font-size: 26px;
 }
 
 .app-header p {
-margin: 0;
-color: #c8c8c8;
-font-size: 14px;
+    margin: 0;
+    color: #c8c8c8;
+    font-size: 14px;
 }
 
 .app-container {
-width: min(1100px, 92%);
-margin: 32px auto;
+    width: min(1100px, 92%);
+    margin: 32px auto;
 }
 
 .upload-section {
-padding: 24px;
-background: white;
-border: 1px solid #deded8;
-border-radius: 12px;
-margin-bottom: 24px;
+    padding: 24px;
+    background: white;
+    border: 1px solid #deded8;
+    border-radius: 12px;
+    margin-bottom: 24px;
 }
 
 h2 {
-margin-top: 0;
-font-size: 18px;
+    margin-top: 0;
+    font-size: 18px;
 }
 
 .upload-section p {
-color: #666;
-font-size: 14px;
-margin-bottom: 22px;
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 22px;
 }
 
 .upload-button {
-display: inline-block;
-padding: 12px 20px;
-background: #252525;
-color: white;
-border-radius: 7px;
-cursor: pointer;
-font-size: 14px;
+    display: inline-block;
+    padding: 12px 20px;
+    background: #252525;
+    color: white;
+    border-radius: 7px;
+    cursor: pointer;
+    font-size: 14px;
 }
 
 .upload-button:hover {
-background: #444;
+    background: #444;
 }
 
 .workspace {
-padding: 24px;
-background: white;
-border: 1px solid #deded8;
-border-radius: 12px;
+    padding: 24px;
+    background: white;
+    border: 1px solid #deded8;
+    border-radius: 12px;
 }
 
 .workspace-header {
-display: flex;
-justify-content: space-between;
-align-items: center;
-flex-wrap: wrap;
-gap: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
 }
 
 .workspace-header h2 {
-margin-bottom: 16px;
+    margin-bottom: 16px;
 }
 
 #imageStatus {
-font-size: 12px;
-color: #777;
+    font-size: 12px;
+    color: #777;
 }
 
 .image-container {
-min-height: 380px;
-padding: 20px;
-background: #eeeeeb;
-border: 1px dashed #c5c5bd;
-border-radius: 8px;
-display: flex;
-justify-content: center;
-align-items: center;
-overflow: hidden;
+    min-height: 380px;
+    padding: 20px;
+    background: #eeeeeb;
+    border: 1px dashed #c5c5bd;
+    border-radius: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
 }
 
 .placeholder {
-text-align: center;
-color: #777;
+    text-align: center;
+    color: #777;
 }
 
 .placeholder-icon {
-display: block;
-font-size: 38px;
-margin-bottom: 10px;
+    display: block;
+    font-size: 38px;
+    margin-bottom: 10px;
 }
 
 .placeholder p {
-margin-bottom: 6px;
+    margin-bottom: 6px;
 }
 
 .placeholder small {
-color: #999;
+    color: #999;
 }
 
 #referenceImage {
-display: block;
-max-width: 100%;
-max-height: 650px;
-object-fit: contain;
+    display: block;
+    max-width: 100%;
+    max-height: none;
+    object-fit: contain;
 }
 
 #referenceImage[hidden] {
-display: none;
+    display: none;
 }
 
 @media (max-width: 600px) {
-.app-header {
-padding: 22px 5%;
-}
+    .app-header {
+        padding: 22px 5%;
+    }
 
-```
-.app-header h1 {
-    font-size: 21px;
-}
+    .app-header h1 {
+        font-size: 21px;
+    }
 
-.image-container {
-    min-height: 260px;
-    padding: 10px;
-}
+    .image-container {
+        min-height: 260px;
+        padding: 10px;
+    }
 
-.workspace,
-.upload-section {
-    padding: 16px;
-}
-```
-
+    .workspace,
+    .upload-section {
+        padding: 16px;
+    }
 }
 
 .drawing-area {
@@ -202,4 +199,154 @@ padding: 22px 5%;
 #drawingArea[hidden],
 #drawingInstructions[hidden] {
     display: none;
+}
+
+.paper-settings {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin: 16px 0;
+}
+
+.paper-settings label {
+    font-size: 14px;
+}
+
+.paper-settings select {
+    padding: 9px 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background: white;
+}
+
+.paper-workspace {
+    --ruler-size: 38px;
+    width: 100%;
+    max-width: 900px;
+    margin: 20px auto;
+}
+
+.paper-middle {
+    display: grid;
+    grid-template-columns:
+        var(--ruler-size) minmax(0, 1fr) var(--ruler-size);
+    align-items: stretch;
+}
+
+.paper-stage {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    background: white;
+    border: 1px solid #bdbdbd;
+    box-sizing: border-box;
+}
+
+.paper-stage img,
+.paper-stage canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.paper-stage img {
+    display: block;
+    max-width: none;
+    max-height: none;
+    object-fit: fill;
+    pointer-events: none;
+}
+
+.paper-stage canvas {
+    z-index: 1;
+    cursor: crosshair;
+}
+
+.ruler {
+    position: relative;
+    overflow: hidden;
+    background: #f0eee8;
+    color: #555;
+    font-size: 10px;
+    user-select: none;
+}
+
+.ruler-horizontal {
+    height: 38px;
+    margin-left: var(--ruler-size);
+    margin-right: var(--ruler-size);
+}
+
+.ruler-vertical {
+    width: var(--ruler-size);
+}
+
+.ruler-tick {
+    position: absolute;
+    background: #777;
+}
+
+.ruler-horizontal .ruler-tick {
+    width: 1px;
+    height: 4px;
+    top: 0;
+}
+
+.ruler-horizontal .ruler-tick.half {
+    height: 8px;
+}
+
+.ruler-horizontal .ruler-tick.major {
+    height: 12px;
+}
+
+.ruler-vertical .ruler-tick {
+    height: 1px;
+    width: 4px;
+    left: 0;
+}
+
+.ruler-vertical .ruler-tick.half {
+    width: 8px;
+}
+
+.ruler-vertical .ruler-tick.major {
+    width: 12px;
+}
+
+.ruler-label {
+    position: absolute;
+    white-space: nowrap;
+    font-size: 9px;
+}
+
+.ruler-horizontal .ruler-label {
+    top: 14px;
+    transform: translateX(-50%);
+}
+
+.ruler-horizontal .ruler-label.alternate {
+    top: 14px;
+}
+
+.ruler-vertical .ruler-label {
+    left: 14px;
+    transform: translateY(-50%);
+}
+
+.ruler-vertical .ruler-label.alternate {
+    left: 14px;
+}
+
+#paperWorkspace[hidden] {
+    display: none;
+}
+
+.drawing-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 12px;
 }
