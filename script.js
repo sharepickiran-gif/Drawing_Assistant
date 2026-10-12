@@ -17,6 +17,7 @@ const resetButton = document.getElementById("resetLine");
 const undoButton = document.getElementById("undoAction");
 const redButton = document.getElementById("addHorizontalLine");
 const blueButton = document.getElementById("addVerticalLine");
+const randomButton = document.getElementById("addRandomLine");
 
 const ctx = drawingCanvas.getContext("2d");
 
@@ -35,6 +36,7 @@ let paperHeight = 297;
 
 let eyePoints = [];
 let centreAnchor = null;
+let randomStart = null;
 let extraGuides = [];
 let history = [];
 let placementMode = null;
@@ -70,6 +72,7 @@ function configurePaper(resetGuides = true) {
     if (resetGuides) {
         eyePoints = [];
         centreAnchor = null;
+        randomStart = null;
         extraGuides = [];
         history = [];
         placementMode = null;
@@ -249,6 +252,7 @@ function saveHistory() {
     history.push({
         eyePoints: eyePoints.map(p => ({ ...p })),
         centreAnchor: centreAnchor ? { ...centreAnchor } : null,
+        randomStart: randomStart ? { ...randomStart } : null,
         extraGuides: extraGuides.map(g => ({ ...g }))
     });
 
@@ -256,6 +260,15 @@ function saveHistory() {
 }
 
 function undoOneAction() {
+    if (randomStart) {
+        randomStart = null;
+        updateControls();
+        redrawCanvas();
+        drawingInstructions.textContent =
+            "Pending green line cancelled.";
+        return;
+    }
+
     if (!history.length) {
         drawingInstructions.textContent = "Nothing more to undo.";
         return;
@@ -265,6 +278,7 @@ function undoOneAction() {
 
     eyePoints = previous.eyePoints;
     centreAnchor = previous.centreAnchor;
+    randomStart = previous.randomStart;
     extraGuides = previous.extraGuides;
 
     updateControls();
@@ -280,12 +294,16 @@ function updateControls() {
     resetButton.disabled = !hasImage;
     redButton.disabled = !baseReady;
     blueButton.disabled = !baseReady;
+    randomButton.disabled = !baseReady;
 
     redButton.style.background =
         placementMode === "red" ? "#fde8e8" : "white";
 
     blueButton.style.background =
         placementMode === "blue" ? "#e6f2ff" : "white";
+
+    randomButton.style.background =
+        placementMode === "random" ? "#e8f5e9" : "white";
 
     undoButton.style.background =
         placementMode === "undo" ? "#eeeeee" : "white";
@@ -364,7 +382,34 @@ drawingCanvas.addEventListener("click", function (event) {
         placementMode = null;
 
         drawingInstructions.textContent =
-            "Select Red line or Blue line, then click anywhere on the paper.";
+            "Select Red line, Blue line, or Random line to add guides.";
+
+        updateControls();
+        redrawCanvas();
+        return;
+    }
+
+    if (placementMode === "random") {
+        if (!randomStart) {
+            randomStart = point;
+            drawingInstructions.textContent =
+                "Random line: select the second point.";
+        } else {
+            const start = randomStart;
+            randomStart = null;
+            saveHistory();
+            extraGuides.push({
+                type: "random-line",
+                anchor: start,
+                direction: {
+                    x: point.x - start.x,
+                    y: point.y - start.y
+                },
+                color: "#2e9d50"
+            });
+            drawingInstructions.textContent =
+                "Green line added. Select two points to draw another.";
+        }
 
         updateControls();
         redrawCanvas();
@@ -413,6 +458,17 @@ blueButton.addEventListener("click", function () {
     updateControls();
 });
 
+randomButton.addEventListener("click", function () {
+    if (!centreAnchor) return;
+
+    randomStart = null;
+    placementMode = "random";
+    drawingInstructions.textContent =
+        "Random line: select two points on the paper.";
+
+    updateControls();
+});
+
 undoButton.addEventListener("click", function () {
     placementMode = "undo";
 
@@ -427,6 +483,7 @@ resetButton.addEventListener("click", function () {
 
     eyePoints = [];
     centreAnchor = null;
+    randomStart = null;
     extraGuides = [];
     placementMode = null;
 
@@ -583,6 +640,16 @@ function redrawCanvas() {
     extraGuides.forEach(function (guide) {
         const a = eyePoints[0];
         const b = eyePoints[1];
+
+        if (guide.type === "random-line") {
+            drawInfiniteLine(
+                guide.anchor,
+                guide.direction,
+                guide.color,
+                baseWidth
+            );
+            return;
+        }
 
         if (guide.type === "parallel-eye") {
             drawInfiniteLine(
