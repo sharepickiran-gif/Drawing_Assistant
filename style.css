@@ -64,6 +64,91 @@ h2 {
     background: #444;
 }
 
+.image-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.download-button {
+    padding: 12px 20px;
+    background: white;
+    color: #252525;
+    border: 1px solid #252525;
+    border-radius: 7px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.download-button:hover:not(:disabled) {
+    background: #eeeeeb;
+}
+
+.download-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.grid-settings,
+.regular-grid-settings {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+.grid-settings {
+    margin-bottom: 18px;
+}
+
+.grid-settings label,
+#gridSizeStatus {
+    font-size: 14px;
+}
+
+.grid-settings select,
+.regular-grid-settings input[type="number"] {
+    padding: 9px 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background: white;
+}
+
+.regular-grid-settings input[type="number"] {
+    width: 84px;
+}
+
+.regular-grid-settings input[aria-invalid="true"] {
+    border-color: #c62828;
+}
+
+.regular-grid-settings input[type="color"] {
+    width: 42px;
+    height: 36px;
+    padding: 3px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background: white;
+    cursor: pointer;
+}
+
+.half-grid-button {
+    padding: 9px 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background: white;
+    cursor: pointer;
+}
+
+.half-grid-button[aria-pressed="true"] {
+    border-color: #252525;
+    background: #eeeeeb;
+}
+
+#gridSizeStatus {
+    color: #666;
+}
+
 .workspace {
     padding: 24px;
     background: white;
@@ -349,4 +434,9 @@ h2 {
     flex-wrap: wrap;
     gap: 10px;
     margin-top: 12px;
+}
+
+.drawing-controls[hidden],
+.regular-grid-settings[hidden] {
+    display: none;
 }

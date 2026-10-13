@@ -1,6 +1,7 @@
 console.log("Drawing Assistant is running.");
 
 const imageUpload = document.getElementById("imageUpload");
+const downloadButton = document.getElementById("downloadImage");
 const referenceImage = document.getElementById("referenceImage");
 const placeholder = document.getElementById("placeholder");
 const imageStatus = document.getElementById("imageStatus");
@@ -9,6 +10,13 @@ const paperWorkspace = document.getElementById("paperWorkspace");
 const paperStage = document.getElementById("paperStage");
 const paperSizeSelect = document.getElementById("paperSize");
 const orientationSelect = document.getElementById("paperOrientation");
+const gridModeSelect = document.getElementById("gridMode");
+const regularGridSettings = document.getElementById("regularGridSettings");
+const gridColorInput = document.getElementById("gridColor");
+const gridSizeInput = document.getElementById("gridSizeInput");
+const gridSizeStatus = document.getElementById("gridSizeStatus");
+const halfGridButton = document.getElementById("halfGridButton");
+const drawingControls = document.getElementById("drawingControls");
 
 const drawingCanvas = document.getElementById("drawingCanvas");
 const drawingInstructions = document.getElementById("drawingInstructions");
@@ -27,9 +35,17 @@ const PAPER_SIZES = {
     A3: { width: 297, height: 420 }
 };
 
+const DEFAULT_GRID_SIZES_CM = {
+    A5: 1,
+    A4: 2,
+    A3: 4
+};
+
 const PIXELS_PER_MM = 4;
 const BASE_LINE_WIDTH = 4;
-const EXTRA_LINE_WIDTH = 1.8;
+const EXTRA_LINE_WIDTH = 2;
+const MIN_GRID_SIZE_CM = 0.1;
+const MAX_GRID_SIZE_CM = 100;
 
 let paperWidth = 210;
 let paperHeight = 297;
@@ -41,6 +57,9 @@ let extraGuides = [];
 let history = [];
 let placementMode = null;
 let currentImageURL = null;
+let gridSizeCm = DEFAULT_GRID_SIZES_CM.A4;
+let halfGridCells = new Set();
+let choosingHalfGridCells = false;
 
 function getPaperDimensions() {
     const size = PAPER_SIZES[paperSizeSelect.value];
@@ -76,11 +95,18 @@ function configurePaper(resetGuides = true) {
         extraGuides = [];
         history = [];
         placementMode = null;
+        gridSizeCm = DEFAULT_GRID_SIZES_CM[paperSizeSelect.value];
+        gridSizeInput.value = String(gridSizeCm);
+        gridSizeInput.removeAttribute("aria-invalid");
+        halfGridCells.clear();
+        choosingHalfGridCells = false;
+        halfGridButton.setAttribute("aria-pressed", "false");
 
         drawingInstructions.textContent =
             "Place your guides again for the selected paper size.";
     }
 
+    updateGridSizeStatus();
     updateControls();
     redrawCanvas();
 }
@@ -201,6 +227,120 @@ function pointInsideImage(point) {
     );
 }
 
+function getGridCellSize() {
+    return gridSizeCm * 10 * PIXELS_PER_MM;
+}
+
+function isRegularGridMode() {
+    return gridModeSelect.value === "regular";
+}
+
+function updateGridSizeStatus() {
+    gridSizeStatus.textContent = `${gridSizeCm} cm squares`;
+}
+
+function showCurrentModeInstructions() {
+    if (paperWorkspace.hidden) return;
+
+    if (gridModeSelect.value === "regular") {
+        drawingInstructions.textContent = choosingHalfGridCells
+            ? "Click any grid square to divide it into four equal squares. Click Half grids again when finished."
+            : "Regular grid is active. Choose a color or enter a square size in centimeters.";
+        return;
+    }
+
+    if (eyePoints.length < 2) {
+        drawingInstructions.textContent =
+            "Step 1: Click the centre of the first eye.";
+    } else if (!centreAnchor) {
+        drawingInstructions.textContent =
+            "Step 3: Click the facial centreline intersection with the eye line.";
+    } else {
+        drawingInstructions.textContent =
+            "Select Red line, Blue line, or Random line to add guides.";
+    }
+}
+
+function drawRegularGrid() {
+    const cellSize = getGridCellSize();
+    if (!cellSize) return;
+
+    ctx.save();
+    ctx.strokeStyle = gridColorInput.value;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+
+    for (let x = 0; x <= drawingCanvas.width; x += cellSize) {
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, drawingCanvas.height);
+    }
+
+    for (let y = 0; y <= drawingCanvas.height; y += cellSize) {
+        ctx.moveTo(0, y);
+        ctx.lineTo(drawingCanvas.width, y);
+    }
+
+    ctx.stroke();
+
+    ctx.lineWidth = 2;
+    halfGridCells.forEach(function (cell) {
+        const [column, row] = cell.split(":").map(Number);
+        const left = column * cellSize;
+        const top = row * cellSize;
+        const right = Math.min(left + cellSize, drawingCanvas.width);
+        const bottom = Math.min(top + cellSize, drawingCanvas.height);
+
+        ctx.beginPath();
+        ctx.moveTo((left + right) / 2, top);
+        ctx.lineTo((left + right) / 2, bottom);
+        ctx.moveTo(left, (top + bottom) / 2);
+        ctx.lineTo(right, (top + bottom) / 2);
+        ctx.stroke();
+    });
+
+    ctx.restore();
+}
+
+gridModeSelect.addEventListener("change", function () {
+    placementMode = null;
+    choosingHalfGridCells = false;
+    halfGridButton.setAttribute("aria-pressed", "false");
+    updateControls();
+    redrawCanvas();
+    showCurrentModeInstructions();
+});
+
+gridColorInput.addEventListener("input", redrawCanvas);
+
+halfGridButton.addEventListener("click", function () {
+    if (paperWorkspace.hidden || gridModeSelect.value !== "regular") return;
+
+    choosingHalfGridCells = !choosingHalfGridCells;
+    halfGridButton.setAttribute("aria-pressed", String(choosingHalfGridCells));
+    showCurrentModeInstructions();
+});
+
+gridSizeInput.addEventListener("input", function () {
+    const value = gridSizeInput.valueAsNumber;
+    const isValid = Number.isFinite(value) &&
+        value >= MIN_GRID_SIZE_CM &&
+        value <= MAX_GRID_SIZE_CM;
+
+    gridSizeInput.setAttribute("aria-invalid", String(!isValid));
+    if (!isValid) {
+        gridSizeStatus.textContent =
+            `Enter a size from ${MIN_GRID_SIZE_CM} to ${MAX_GRID_SIZE_CM} cm.`;
+        return;
+    }
+
+    if (value !== gridSizeCm) {
+        halfGridCells.clear();
+    }
+    gridSizeCm = value;
+    updateGridSizeStatus();
+    redrawCanvas();
+});
+
 imageUpload.addEventListener("change", function () {
     const file = imageUpload.files[0];
     if (!file) return;
@@ -215,6 +355,7 @@ imageUpload.addEventListener("change", function () {
     }
 
     currentImageURL = URL.createObjectURL(file);
+    downloadButton.disabled = true;
 
     referenceImage.onload = function () {
         placeholder.hidden = true;
@@ -226,18 +367,158 @@ imageUpload.addEventListener("change", function () {
             referenceImage.naturalHeight + " pixels";
 
         configurePaper(true);
+        downloadButton.disabled = false;
 
-        drawingInstructions.textContent =
-            "Step 1: Click the centre of the first eye.";
+        showCurrentModeInstructions();
     };
 
     referenceImage.onerror = function () {
         imageStatus.textContent = "Unable to display this image.";
+        downloadButton.disabled = true;
         URL.revokeObjectURL(currentImageURL);
         currentImageURL = null;
     };
 
     referenceImage.src = currentImageURL;
+});
+
+function drawExportRuler(exportContext, x, y, length, direction, thickness) {
+    const rulerLength = direction === "horizontal" ? paperWidth : paperHeight;
+
+    exportContext.save();
+    exportContext.beginPath();
+    exportContext.rect(
+        x,
+        y,
+        direction === "horizontal" ? length : thickness,
+        direction === "horizontal" ? thickness : length
+    );
+    exportContext.clip();
+
+    exportContext.fillStyle = "#f0eee8";
+    exportContext.fillRect(
+        x,
+        y,
+        direction === "horizontal" ? length : thickness,
+        direction === "horizontal" ? thickness : length
+    );
+
+    exportContext.strokeStyle = "#777";
+    exportContext.fillStyle = "#555";
+    exportContext.lineWidth = 1;
+    exportContext.font = "9px Arial, sans-serif";
+
+    for (let mm = 0; mm <= rulerLength; mm++) {
+        const position = (mm / rulerLength) * length;
+        const major = mm % 10 === 0;
+        const tickLength = major ? 12 : mm % 5 === 0 ? 8 : 4;
+
+        exportContext.beginPath();
+        if (direction === "horizontal") {
+            exportContext.moveTo(x + position, y);
+            exportContext.lineTo(x + position, y + tickLength);
+        } else {
+            exportContext.moveTo(x, y + position);
+            exportContext.lineTo(x + tickLength, y + position);
+        }
+        exportContext.stroke();
+
+        if (major) {
+            exportContext.textAlign =
+                direction === "horizontal" ? "center" : "left";
+            exportContext.textBaseline =
+                direction === "horizontal" ? "alphabetic" : "middle";
+            exportContext.fillText(
+                String(mm / 10),
+                direction === "horizontal" ? x + position : x + 14,
+                direction === "horizontal" ? y + 22 : y + position
+            );
+        }
+    }
+
+    exportContext.restore();
+}
+
+function createExportCanvas() {
+    const rulerSize = 38;
+    const exportCanvas = document.createElement("canvas");
+    const exportContext = exportCanvas.getContext("2d");
+
+    if (!exportContext) {
+        throw new Error("Unable to create the image export canvas.");
+    }
+
+    exportCanvas.width = drawingCanvas.width + rulerSize * 2;
+    exportCanvas.height = drawingCanvas.height + rulerSize * 2;
+
+    exportContext.fillStyle = "#fff";
+    exportContext.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+
+    drawExportRuler(exportContext, rulerSize, 0, drawingCanvas.width, "horizontal", rulerSize);
+    drawExportRuler(
+        exportContext,
+        rulerSize,
+        drawingCanvas.height + rulerSize,
+        drawingCanvas.width,
+        "horizontal",
+        rulerSize
+    );
+    drawExportRuler(exportContext, 0, rulerSize, drawingCanvas.height, "vertical", rulerSize);
+    drawExportRuler(
+        exportContext,
+        drawingCanvas.width + rulerSize,
+        rulerSize,
+        drawingCanvas.height,
+        "vertical",
+        rulerSize
+    );
+
+    const bounds = getImageBounds();
+    if (bounds) {
+        exportContext.drawImage(
+            referenceImage,
+            rulerSize + bounds.x,
+            rulerSize + bounds.y,
+            bounds.width,
+            bounds.height
+        );
+    }
+    exportContext.drawImage(drawingCanvas, rulerSize, rulerSize);
+    exportContext.strokeStyle = "#bdbdbd";
+    exportContext.lineWidth = 1;
+    exportContext.strokeRect(
+        rulerSize + 0.5,
+        rulerSize + 0.5,
+        drawingCanvas.width - 1,
+        drawingCanvas.height - 1
+    );
+
+    return exportCanvas;
+}
+
+downloadButton.addEventListener("click", function () {
+    if (downloadButton.disabled || paperWorkspace.hidden) return;
+
+    try {
+        createExportCanvas().toBlob(function (blob) {
+            if (!blob) {
+                imageStatus.textContent = "Unable to create the image download.";
+                return;
+            }
+
+            const downloadURL = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = downloadURL;
+            link.download = "drawing-assistant-reference.png";
+            link.click();
+            setTimeout(function () {
+                URL.revokeObjectURL(downloadURL);
+            }, 1000);
+        }, "image/png");
+    } catch (error) {
+        console.error("Image export failed:", error);
+        imageStatus.textContent = "Unable to create the image download.";
+    }
 });
 
 paperSizeSelect.addEventListener("change", function () {
@@ -288,13 +569,20 @@ function undoOneAction() {
 
 function updateControls() {
     const hasImage = !paperWorkspace.hidden;
+    const isCustomMode = gridModeSelect.value === "custom";
     const baseReady = eyePoints.length === 2 && centreAnchor !== null;
 
-    undoButton.disabled = !hasImage;
-    resetButton.disabled = !hasImage;
-    redButton.disabled = !baseReady;
-    blueButton.disabled = !baseReady;
-    randomButton.disabled = !baseReady;
+    drawingControls.hidden = !hasImage || !isCustomMode;
+    regularGridSettings.hidden = gridModeSelect.value !== "regular";
+    halfGridButton.disabled = !hasImage || !isRegularGridMode();
+    halfGridButton.setAttribute("aria-pressed", String(choosingHalfGridCells));
+    downloadButton.disabled = !hasImage;
+
+    undoButton.disabled = !hasImage || !isCustomMode;
+    resetButton.disabled = !hasImage || !isCustomMode;
+    redButton.disabled = !baseReady || !isCustomMode;
+    blueButton.disabled = !baseReady || !isCustomMode;
+    randomButton.disabled = !baseReady || !isCustomMode;
 
     redButton.style.background =
         placementMode === "red" ? "#fde8e8" : "white";
@@ -338,6 +626,26 @@ drawingCanvas.addEventListener("click", function (event) {
         y: (event.clientY - rect.top) *
             drawingCanvas.height / rect.height
     };
+
+    if (isRegularGridMode()) {
+        if (!choosingHalfGridCells) return;
+
+        const cellSize = getGridCellSize();
+        const column = Math.min(
+            Math.floor(point.x / cellSize),
+            Math.ceil(drawingCanvas.width / cellSize) - 1
+        );
+        const row = Math.min(
+            Math.floor(point.y / cellSize),
+            Math.ceil(drawingCanvas.height / cellSize) - 1
+        );
+
+        halfGridCells.add(`${column}:${row}`);
+        redrawCanvas();
+        return;
+    }
+
+    if (gridModeSelect.value !== "custom") return;
 
     if (placementMode === "undo") {
         undoOneAction();
@@ -609,6 +917,11 @@ function drawPoint(point, color, radius) {
 function redrawCanvas() {
     ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
 
+    if (gridModeSelect.value === "regular") {
+        drawRegularGrid();
+        return;
+    }
+
     const baseWidth = BASE_LINE_WIDTH * PIXELS_PER_MM / 4;
     const extraWidth = EXTRA_LINE_WIDTH * PIXELS_PER_MM / 4;
     const radius = 5;
@@ -646,7 +959,7 @@ function redrawCanvas() {
                 guide.anchor,
                 guide.direction,
                 guide.color,
-                baseWidth
+                extraWidth
             );
             return;
         }

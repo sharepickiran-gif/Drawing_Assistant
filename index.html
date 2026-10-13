@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Loomis Drawing Assistant</title>
+    <title>Drawing Assistant</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <header class="app-header">
         <div>
-            <h1>Loomis Drawing Assistant</h1>
+            <h1>Drawing Assistant</h1>
             <p>A smarter way to construct portraits</p>
         </div>
     </header>
@@ -19,9 +19,47 @@
             <h2>01 — Upload your reference</h2>
             <p>Select a portrait photograph to begin.</p>
 
-            <label for="imageUpload" class="upload-button">
-                Choose Photograph
-            </label>
+            <div class="grid-settings">
+                <label for="gridMode">Grid type</label>
+                <select id="gridMode">
+                    <option value="regular" selected>Regular grid</option>
+                    <option value="custom">Custom grid</option>
+                </select>
+
+                <div id="regularGridSettings" class="regular-grid-settings">
+                    <label for="gridColor">Grid color</label>
+                    <input id="gridColor" type="color" value="#e53935">
+                    <label for="gridSizeInput">Square size (cm)</label>
+                    <input
+                        id="gridSizeInput"
+                        type="number"
+                        min="0.1"
+                        max="100"
+                        step="0.1"
+                        value="2"
+                        inputmode="decimal"
+                    >
+                    <span id="gridSizeStatus" aria-live="polite">2 cm squares</span>
+                    <button
+                        id="halfGridButton"
+                        class="half-grid-button"
+                        type="button"
+                        aria-pressed="false"
+                    >
+                        Half grids
+                    </button>
+                </div>
+            </div>
+
+            <div class="image-actions">
+                <label for="imageUpload" class="upload-button">
+                    Choose Photograph
+                </label>
+
+                <button id="downloadImage" class="download-button" type="button" disabled>
+                    Download Image
+                </button>
+            </div>
 
             <input
                 type="file"
@@ -81,7 +119,7 @@
                 Upload a portrait, then click the centre of each eye.
             </div>
 
-            <div class="drawing-controls">
+            <div id="drawingControls" class="drawing-controls" hidden>
                 <button id="undoAction" type="button" disabled>
                     Undo
                 </button>
@@ -108,4 +146,3 @@
     <script src="script.js"></script>
 </body>
 </html>
-
