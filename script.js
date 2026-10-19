@@ -16,6 +16,8 @@ const gridColorInput = document.getElementById("gridColor");
 const gridSizeInput = document.getElementById("gridSizeInput");
 const gridSizeStatus = document.getElementById("gridSizeStatus");
 const halfGridButton = document.getElementById("halfGridButton");
+const diagonalsButton = document.getElementById("diagonalsButton");
+const undoGridActionButton = document.getElementById("undoGridActionButton");
 const drawingControls = document.getElementById("drawingControls");
 
 const drawingCanvas = document.getElementById("drawingCanvas");
@@ -59,7 +61,10 @@ let placementMode = null;
 let currentImageURL = null;
 let gridSizeCm = DEFAULT_GRID_SIZES_CM.A4;
 let halfGridCells = new Set();
+let diagonalGridCells = new Set();
+let gridActionHistory = [];
 let choosingHalfGridCells = false;
+let choosingDiagonalCells = false;
 
 function getPaperDimensions() {
     const size = PAPER_SIZES[paperSizeSelect.value];
@@ -99,8 +104,12 @@ function configurePaper(resetGuides = true) {
         gridSizeInput.value = String(gridSizeCm);
         gridSizeInput.removeAttribute("aria-invalid");
         halfGridCells.clear();
+        diagonalGridCells.clear();
+        gridActionHistory = [];
         choosingHalfGridCells = false;
+        choosingDiagonalCells = false;
         halfGridButton.setAttribute("aria-pressed", "false");
+        diagonalsButton.setAttribute("aria-pressed", "false");
 
         drawingInstructions.textContent =
             "Place your guides again for the selected paper size.";
@@ -243,9 +252,16 @@ function showCurrentModeInstructions() {
     if (paperWorkspace.hidden) return;
 
     if (gridModeSelect.value === "regular") {
-        drawingInstructions.textContent = choosingHalfGridCells
-            ? "Click any grid square to divide it into four equal squares. Click Half grids again when finished."
-            : "Regular grid is active. Choose a color or enter a square size in centimeters.";
+        if (choosingHalfGridCells) {
+            drawingInstructions.textContent =
+                "Click any grid square to divide it into four equal squares. Click Half grids again when finished.";
+        } else if (choosingDiagonalCells) {
+            drawingInstructions.textContent =
+                "Click any grid square to add both diagonals. Click Diagonals again when finished.";
+        } else {
+            drawingInstructions.textContent =
+                "Regular grid is active. Choose a color or enter a square size in centimeters.";
+        }
         return;
     }
 
@@ -298,13 +314,30 @@ function drawRegularGrid() {
         ctx.stroke();
     });
 
+    diagonalGridCells.forEach(function (cell) {
+        const [column, row] = cell.split(":").map(Number);
+        const left = column * cellSize;
+        const top = row * cellSize;
+        const right = Math.min(left + cellSize, drawingCanvas.width);
+        const bottom = Math.min(top + cellSize, drawingCanvas.height);
+
+        ctx.beginPath();
+        ctx.moveTo(left, top);
+        ctx.lineTo(right, bottom);
+        ctx.moveTo(right, top);
+        ctx.lineTo(left, bottom);
+        ctx.stroke();
+    });
+
     ctx.restore();
 }
 
 gridModeSelect.addEventListener("change", function () {
     placementMode = null;
     choosingHalfGridCells = false;
+    choosingDiagonalCells = false;
     halfGridButton.setAttribute("aria-pressed", "false");
+    diagonalsButton.setAttribute("aria-pressed", "false");
     updateControls();
     redrawCanvas();
     showCurrentModeInstructions();
@@ -316,8 +349,32 @@ halfGridButton.addEventListener("click", function () {
     if (paperWorkspace.hidden || gridModeSelect.value !== "regular") return;
 
     choosingHalfGridCells = !choosingHalfGridCells;
+    choosingDiagonalCells = false;
     halfGridButton.setAttribute("aria-pressed", String(choosingHalfGridCells));
+    diagonalsButton.setAttribute("aria-pressed", "false");
     showCurrentModeInstructions();
+});
+
+diagonalsButton.addEventListener("click", function () {
+    if (paperWorkspace.hidden || gridModeSelect.value !== "regular") return;
+
+    choosingDiagonalCells = !choosingDiagonalCells;
+    choosingHalfGridCells = false;
+    diagonalsButton.setAttribute("aria-pressed", String(choosingDiagonalCells));
+    halfGridButton.setAttribute("aria-pressed", "false");
+    showCurrentModeInstructions();
+});
+
+undoGridActionButton.addEventListener("click", function () {
+    const previousAction = gridActionHistory.pop();
+    if (!previousAction) return;
+
+    const cells = previousAction.type === "half-grid"
+        ? halfGridCells
+        : diagonalGridCells;
+    cells.delete(previousAction.cell);
+    updateControls();
+    redrawCanvas();
 });
 
 gridSizeInput.addEventListener("input", function () {
@@ -335,8 +392,11 @@ gridSizeInput.addEventListener("input", function () {
 
     if (value !== gridSizeCm) {
         halfGridCells.clear();
+        diagonalGridCells.clear();
+        gridActionHistory = [];
     }
     gridSizeCm = value;
+    updateControls();
     updateGridSizeStatus();
     redrawCanvas();
 });
@@ -576,6 +636,10 @@ function updateControls() {
     regularGridSettings.hidden = gridModeSelect.value !== "regular";
     halfGridButton.disabled = !hasImage || !isRegularGridMode();
     halfGridButton.setAttribute("aria-pressed", String(choosingHalfGridCells));
+    diagonalsButton.disabled = !hasImage || !isRegularGridMode();
+    diagonalsButton.setAttribute("aria-pressed", String(choosingDiagonalCells));
+    undoGridActionButton.disabled =
+        !hasImage || !isRegularGridMode() || gridActionHistory.length === 0;
     downloadButton.disabled = !hasImage;
 
     undoButton.disabled = !hasImage || !isCustomMode;
@@ -628,7 +692,7 @@ drawingCanvas.addEventListener("click", function (event) {
     };
 
     if (isRegularGridMode()) {
-        if (!choosingHalfGridCells) return;
+        if (!choosingHalfGridCells && !choosingDiagonalCells) return;
 
         const cellSize = getGridCellSize();
         const column = Math.min(
@@ -640,7 +704,19 @@ drawingCanvas.addEventListener("click", function (event) {
             Math.ceil(drawingCanvas.height / cellSize) - 1
         );
 
-        halfGridCells.add(`${column}:${row}`);
+        const cell = `${column}:${row}`;
+        if (choosingHalfGridCells) {
+            if (!halfGridCells.has(cell)) {
+                halfGridCells.add(cell);
+                gridActionHistory.push({ type: "half-grid", cell });
+            }
+        } else {
+            if (!diagonalGridCells.has(cell)) {
+                diagonalGridCells.add(cell);
+                gridActionHistory.push({ type: "diagonal", cell });
+            }
+        }
+        updateControls();
         redrawCanvas();
         return;
     }
