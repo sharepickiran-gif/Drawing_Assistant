@@ -9,14 +9,23 @@ const imageStatus = document.getElementById("imageStatus");
 const paperWorkspace = document.getElementById("paperWorkspace");
 const paperStage = document.getElementById("paperStage");
 const paperSizeSelect = document.getElementById("paperSize");
+const customPaperSettings = document.getElementById("customPaperSettings");
+const customPaperWidthInput = document.getElementById("customPaperWidth");
+const customPaperHeightInput = document.getElementById("customPaperHeight");
+const customPaperStatus = document.getElementById("customPaperStatus");
 const orientationSelect = document.getElementById("paperOrientation");
 const gridModeSelect = document.getElementById("gridMode");
 const regularGridSettings = document.getElementById("regularGridSettings");
 const gridColorInput = document.getElementById("gridColor");
+const gridOpacityInput = document.getElementById("gridOpacityInput");
+const gridOpacityStatus = document.getElementById("gridOpacityStatus");
+const gridThicknessInput = document.getElementById("gridThicknessInput");
+const gridThicknessStatus = document.getElementById("gridThicknessStatus");
 const gridSizeInput = document.getElementById("gridSizeInput");
 const gridSizeStatus = document.getElementById("gridSizeStatus");
 const halfGridButton = document.getElementById("halfGridButton");
 const diagonalsButton = document.getElementById("diagonalsButton");
+const randomGridLineButton = document.getElementById("randomGridLineButton");
 const undoGridActionButton = document.getElementById("undoGridActionButton");
 const drawingControls = document.getElementById("drawingControls");
 
@@ -62,14 +71,21 @@ let currentImageURL = null;
 let gridSizeCm = DEFAULT_GRID_SIZES_CM.A4;
 let halfGridCells = new Set();
 let diagonalGridCells = new Set();
+let randomGridLines = [];
 let gridActionHistory = [];
 let choosingHalfGridCells = false;
 let choosingDiagonalCells = false;
+let choosingRandomGridLine = false;
+let pendingRandomGridPoint = null;
 
 function getPaperDimensions() {
     const size = PAPER_SIZES[paperSizeSelect.value];
-    let width = size.width;
-    let height = size.height;
+    let width = size
+        ? size.width
+        : customPaperWidthInput.valueAsNumber * 10;
+    let height = size
+        ? size.height
+        : customPaperHeightInput.valueAsNumber * 10;
 
     if (orientationSelect.value === "landscape") {
         [width, height] = [height, width];
@@ -79,6 +95,27 @@ function getPaperDimensions() {
 }
 
 function configurePaper(resetGuides = true) {
+    customPaperSettings.hidden = paperSizeSelect.value !== "custom";
+    if (paperSizeSelect.value === "custom" && (
+        !customPaperWidthInput.validity.valid ||
+        !customPaperHeightInput.validity.valid
+    )) {
+        customPaperStatus.textContent =
+            "Enter paper dimensions from 1 to 100 cm.";
+        customPaperWidthInput.setAttribute(
+            "aria-invalid",
+            String(!customPaperWidthInput.validity.valid)
+        );
+        customPaperHeightInput.setAttribute(
+            "aria-invalid",
+            String(!customPaperHeightInput.validity.valid)
+        );
+        return;
+    }
+
+    customPaperStatus.textContent = "";
+    customPaperWidthInput.removeAttribute("aria-invalid");
+    customPaperHeightInput.removeAttribute("aria-invalid");
     const dimensions = getPaperDimensions();
 
     paperWidth = dimensions.width;
@@ -100,16 +137,20 @@ function configurePaper(resetGuides = true) {
         extraGuides = [];
         history = [];
         placementMode = null;
-        gridSizeCm = DEFAULT_GRID_SIZES_CM[paperSizeSelect.value];
+        gridSizeCm = DEFAULT_GRID_SIZES_CM[paperSizeSelect.value] || 2;
         gridSizeInput.value = String(gridSizeCm);
         gridSizeInput.removeAttribute("aria-invalid");
         halfGridCells.clear();
         diagonalGridCells.clear();
+        randomGridLines = [];
         gridActionHistory = [];
         choosingHalfGridCells = false;
         choosingDiagonalCells = false;
+        choosingRandomGridLine = false;
+        pendingRandomGridPoint = null;
         halfGridButton.setAttribute("aria-pressed", "false");
         diagonalsButton.setAttribute("aria-pressed", "false");
+        randomGridLineButton.setAttribute("aria-pressed", "false");
 
         drawingInstructions.textContent =
             "Place your guides again for the selected paper size.";
@@ -258,6 +299,10 @@ function showCurrentModeInstructions() {
         } else if (choosingDiagonalCells) {
             drawingInstructions.textContent =
                 "Click any grid square to add both diagonals. Click Diagonals again when finished.";
+        } else if (choosingRandomGridLine) {
+            drawingInstructions.textContent = pendingRandomGridPoint
+                ? "Click another grid intersection to complete the line."
+                : "Click two grid intersections to draw a line between them.";
         } else {
             drawingInstructions.textContent =
                 "Regular grid is active. Choose a color or enter a square size in centimeters.";
@@ -283,7 +328,8 @@ function drawRegularGrid() {
 
     ctx.save();
     ctx.strokeStyle = gridColorInput.value;
-    ctx.lineWidth = 1.5;
+    ctx.globalAlpha = gridOpacityInput.valueAsNumber / 100;
+    ctx.lineWidth = gridThicknessInput.valueAsNumber;
     ctx.beginPath();
 
     for (let x = 0; x <= drawingCanvas.width; x += cellSize) {
@@ -298,7 +344,6 @@ function drawRegularGrid() {
 
     ctx.stroke();
 
-    ctx.lineWidth = 2;
     halfGridCells.forEach(function (cell) {
         const [column, row] = cell.split(":").map(Number);
         const left = column * cellSize;
@@ -329,15 +374,42 @@ function drawRegularGrid() {
         ctx.stroke();
     });
 
+    randomGridLines.forEach(function (line) {
+        const start = getGridIntersectionPoint(line.start, cellSize);
+        const end = getGridIntersectionPoint(line.end, cellSize);
+        ctx.beginPath();
+        ctx.moveTo(start.x, start.y);
+        ctx.lineTo(end.x, end.y);
+        ctx.stroke();
+    });
+
+    if (pendingRandomGridPoint) {
+        const point = getGridIntersectionPoint(pendingRandomGridPoint, cellSize);
+        ctx.fillStyle = gridColorInput.value;
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
     ctx.restore();
+}
+
+function getGridIntersectionPoint(intersection, cellSize) {
+    return {
+        x: Math.min(intersection.column * cellSize, drawingCanvas.width),
+        y: Math.min(intersection.row * cellSize, drawingCanvas.height)
+    };
 }
 
 gridModeSelect.addEventListener("change", function () {
     placementMode = null;
     choosingHalfGridCells = false;
     choosingDiagonalCells = false;
+    choosingRandomGridLine = false;
+    pendingRandomGridPoint = null;
     halfGridButton.setAttribute("aria-pressed", "false");
     diagonalsButton.setAttribute("aria-pressed", "false");
+    randomGridLineButton.setAttribute("aria-pressed", "false");
     updateControls();
     redrawCanvas();
     showCurrentModeInstructions();
@@ -345,13 +417,28 @@ gridModeSelect.addEventListener("change", function () {
 
 gridColorInput.addEventListener("input", redrawCanvas);
 
+gridOpacityInput.addEventListener("input", function () {
+    gridOpacityStatus.value = `${100 - gridOpacityInput.valueAsNumber}%`;
+    redrawCanvas();
+});
+
+gridThicknessInput.addEventListener("input", function () {
+    gridThicknessStatus.value = `${gridThicknessInput.valueAsNumber} px`;
+    redrawCanvas();
+});
+
 halfGridButton.addEventListener("click", function () {
     if (paperWorkspace.hidden || gridModeSelect.value !== "regular") return;
 
     choosingHalfGridCells = !choosingHalfGridCells;
     choosingDiagonalCells = false;
+    choosingRandomGridLine = false;
+    pendingRandomGridPoint = null;
     halfGridButton.setAttribute("aria-pressed", String(choosingHalfGridCells));
     diagonalsButton.setAttribute("aria-pressed", "false");
+    randomGridLineButton.setAttribute("aria-pressed", "false");
+    updateControls();
+    redrawCanvas();
     showCurrentModeInstructions();
 });
 
@@ -360,19 +447,53 @@ diagonalsButton.addEventListener("click", function () {
 
     choosingDiagonalCells = !choosingDiagonalCells;
     choosingHalfGridCells = false;
+    choosingRandomGridLine = false;
+    pendingRandomGridPoint = null;
     diagonalsButton.setAttribute("aria-pressed", String(choosingDiagonalCells));
     halfGridButton.setAttribute("aria-pressed", "false");
+    randomGridLineButton.setAttribute("aria-pressed", "false");
+    updateControls();
+    redrawCanvas();
+    showCurrentModeInstructions();
+});
+
+randomGridLineButton.addEventListener("click", function () {
+    if (paperWorkspace.hidden || gridModeSelect.value !== "regular") return;
+
+    choosingRandomGridLine = !choosingRandomGridLine;
+    choosingHalfGridCells = false;
+    choosingDiagonalCells = false;
+    pendingRandomGridPoint = null;
+    randomGridLineButton.setAttribute(
+        "aria-pressed",
+        String(choosingRandomGridLine)
+    );
+    halfGridButton.setAttribute("aria-pressed", "false");
+    diagonalsButton.setAttribute("aria-pressed", "false");
+    updateControls();
+    redrawCanvas();
     showCurrentModeInstructions();
 });
 
 undoGridActionButton.addEventListener("click", function () {
+    if (pendingRandomGridPoint) {
+        pendingRandomGridPoint = null;
+        updateControls();
+        redrawCanvas();
+        showCurrentModeInstructions();
+        return;
+    }
+
     const previousAction = gridActionHistory.pop();
     if (!previousAction) return;
 
-    const cells = previousAction.type === "half-grid"
-        ? halfGridCells
-        : diagonalGridCells;
-    cells.delete(previousAction.cell);
+    if (previousAction.type === "half-grid") {
+        halfGridCells.delete(previousAction.cell);
+    } else if (previousAction.type === "diagonal") {
+        diagonalGridCells.delete(previousAction.cell);
+    } else {
+        randomGridLines.splice(randomGridLines.indexOf(previousAction.line), 1);
+    }
     updateControls();
     redrawCanvas();
 });
@@ -390,11 +511,6 @@ gridSizeInput.addEventListener("input", function () {
         return;
     }
 
-    if (value !== gridSizeCm) {
-        halfGridCells.clear();
-        diagonalGridCells.clear();
-        gridActionHistory = [];
-    }
     gridSizeCm = value;
     updateControls();
     updateGridSizeStatus();
@@ -583,6 +699,30 @@ downloadButton.addEventListener("click", function () {
 
 paperSizeSelect.addEventListener("change", function () {
     if (!paperWorkspace.hidden) configurePaper(true);
+    else customPaperSettings.hidden = paperSizeSelect.value !== "custom";
+});
+
+function updateCustomPaperSize() {
+    if (!paperWorkspace.hidden && paperSizeSelect.value === "custom") {
+        configurePaper(true);
+    }
+}
+
+customPaperWidthInput.addEventListener("change", updateCustomPaperSize);
+customPaperHeightInput.addEventListener("change", updateCustomPaperSize);
+
+customPaperWidthInput.addEventListener("input", function () {
+    customPaperWidthInput.setAttribute(
+        "aria-invalid",
+        String(!customPaperWidthInput.validity.valid)
+    );
+});
+
+customPaperHeightInput.addEventListener("input", function () {
+    customPaperHeightInput.setAttribute(
+        "aria-invalid",
+        String(!customPaperHeightInput.validity.valid)
+    );
 });
 
 orientationSelect.addEventListener("change", function () {
@@ -638,8 +778,14 @@ function updateControls() {
     halfGridButton.setAttribute("aria-pressed", String(choosingHalfGridCells));
     diagonalsButton.disabled = !hasImage || !isRegularGridMode();
     diagonalsButton.setAttribute("aria-pressed", String(choosingDiagonalCells));
+    randomGridLineButton.disabled = !hasImage || !isRegularGridMode();
+    randomGridLineButton.setAttribute(
+        "aria-pressed",
+        String(choosingRandomGridLine)
+    );
     undoGridActionButton.disabled =
-        !hasImage || !isRegularGridMode() || gridActionHistory.length === 0;
+        !hasImage || !isRegularGridMode() ||
+        (gridActionHistory.length === 0 && !pendingRandomGridPoint);
     downloadButton.disabled = !hasImage;
 
     undoButton.disabled = !hasImage || !isCustomMode;
@@ -692,9 +838,47 @@ drawingCanvas.addEventListener("click", function (event) {
     };
 
     if (isRegularGridMode()) {
-        if (!choosingHalfGridCells && !choosingDiagonalCells) return;
+        if (
+            !choosingHalfGridCells &&
+            !choosingDiagonalCells &&
+            !choosingRandomGridLine
+        ) return;
 
         const cellSize = getGridCellSize();
+        if (choosingRandomGridLine) {
+            const maxColumn = Math.ceil(drawingCanvas.width / cellSize);
+            const maxRow = Math.ceil(drawingCanvas.height / cellSize);
+            const intersection = {
+                column: Math.max(
+                    0,
+                    Math.min(Math.round(point.x / cellSize), maxColumn)
+                ),
+                row: Math.max(
+                    0,
+                    Math.min(Math.round(point.y / cellSize), maxRow)
+                )
+            };
+
+            if (!pendingRandomGridPoint) {
+                pendingRandomGridPoint = intersection;
+            } else if (
+                pendingRandomGridPoint.column !== intersection.column ||
+                pendingRandomGridPoint.row !== intersection.row
+            ) {
+                const line = {
+                    start: pendingRandomGridPoint,
+                    end: intersection
+                };
+                randomGridLines.push(line);
+                gridActionHistory.push({ type: "random-line", line });
+                pendingRandomGridPoint = null;
+            }
+            updateControls();
+            redrawCanvas();
+            showCurrentModeInstructions();
+            return;
+        }
+
         const column = Math.min(
             Math.floor(point.x / cellSize),
             Math.ceil(drawingCanvas.width / cellSize) - 1

@@ -132,6 +132,17 @@ h2 {
     cursor: pointer;
 }
 
+.regular-grid-settings input[type="range"] {
+    width: 100px;
+    accent-color: #252525;
+}
+
+.regular-grid-settings output {
+    min-width: 38px;
+    color: #666;
+    font-size: 14px;
+}
+
 .half-grid-button {
     padding: 9px 12px;
     border: 1px solid #ccc;
@@ -303,6 +314,37 @@ h2 {
     border: 1px solid #ccc;
     border-radius: 6px;
     background: white;
+}
+
+.custom-paper-settings {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+.custom-paper-settings[hidden] {
+    display: none;
+}
+
+.custom-paper-settings input {
+    width: 84px;
+    padding: 9px 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+}
+
+.custom-paper-settings input[aria-invalid="true"] {
+    border-color: #c62828;
+}
+
+.custom-paper-settings label,
+#customPaperStatus {
+    font-size: 14px;
+}
+
+#customPaperStatus {
+    color: #c62828;
 }
 
 .paper-workspace {
